@@ -2,6 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const logRoutes = require('./routes/logRoutes');
+const incidentRoutes = require('./routes/incidentRoutes');
+const statsRoutes = require('./routes/statsRoutes');
+const healthRoutes = require('./routes/healthRoutes');
+const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
@@ -30,26 +35,20 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+// Health routes
+app.use('/api/health', healthRoutes);
 
-// TODO: Mount routes from routes/ when implemented
+// Log upload routes
+app.use('/api/logs', logRoutes);
 
-// 404 handler
-app.use((req, res, next) => {
-  res.status(404).json({ error: 'Not found' });
-});
+// Incident routes
+app.use('/api/incidents', incidentRoutes);
 
-// Error handling middleware
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  // In production, avoid leaking internal details
-  console.error('Unhandled error:', err);
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal server error',
-  });
-});
+// Statistics routes
+app.use('/api/stats', statsRoutes);
+
+// 404 and error handlers
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 module.exports = app;

@@ -1,0 +1,191 @@
+{
+  "info": {
+    "name": "SOC Platform API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Postman collection for SOC Platform REST API."
+  },
+  "item": [
+    {
+      "name": "Health - GET /api/health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "health"]
+        }
+      }
+    },
+    {
+      "name": "Logs - POST /api/logs/upload",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "auth.log"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/logs/upload",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "logs", "upload"]
+        }
+      }
+    },
+    {
+      "name": "Incidents - GET /api/incidents",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/incidents?page=1&pageSize=20",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "incidents"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "pageSize", "value": "20" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Incidents - GET /api/incidents/:id",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/incidents/1",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "incidents", "1"]
+        }
+      }
+    },
+    {
+      "name": "Incidents - POST /api/incidents/:id/explain",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/incidents/1/explain",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "incidents", "1", "explain"]
+        }
+      }
+    },
+    {
+      "name": "Incidents - PATCH /api/incidents/:id/status",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"ACKNOWLEDGED\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/incidents/1/status",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "incidents", "1", "status"]
+        }
+      }
+    },
+    {
+      "name": "Incidents - GET /api/incidents/stats",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/incidents/stats",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "incidents", "stats"]
+        }
+      }
+    },
+    {
+      "name": "Stats - GET /api/stats/overview",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/stats/overview",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "stats", "overview"]
+        }
+      }
+    },
+    {
+      "name": "Stats - GET /api/stats/trends",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/stats/trends?days=30",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "stats", "trends"],
+          "query": [
+            { "key": "days", "value": "30" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Stats - GET /api/stats/top-ips",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/stats/top-ips?limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "stats", "top-ips"],
+          "query": [
+            { "key": "limit", "value": "10" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Stats - GET /api/stats/top-users",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/stats/top-users?limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "stats", "top-users"],
+          "query": [
+            { "key": "limit", "value": "10" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Stats - GET /api/stats/severity-distribution",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/stats/severity-distribution",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "stats", "severity-distribution"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5100"
+    }
+  ]
+}

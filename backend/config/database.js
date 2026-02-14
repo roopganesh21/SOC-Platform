@@ -45,15 +45,41 @@ function migrate() {
     CREATE TABLE IF NOT EXISTS ai_explanations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       incident_id INTEGER NOT NULL,
-      explanation TEXT NOT NULL,
-      model TEXT,
-      created_at TEXT NOT NULL,
+      summary TEXT,
+      business_impact TEXT,
+      technical_analysis TEXT,
+      recommended_actions TEXT,
+      severity_justification TEXT,
+      generated_at TEXT,
+      model_version TEXT,
       FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
     );
 
     CREATE INDEX IF NOT EXISTS idx_ai_explanations_incident_id ON ai_explanations(incident_id);
-    CREATE INDEX IF NOT EXISTS idx_ai_explanations_created_at ON ai_explanations(created_at);
+    CREATE INDEX IF NOT EXISTS idx_ai_explanations_created_at ON ai_explanations(generated_at);
   `);
+
+  // Ensure new columns exist on older databases
+  const existingColumns = db
+    .prepare('PRAGMA table_info(ai_explanations)')
+    .all()
+    .map((c) => c.name);
+
+  const requiredColumns = [
+    { name: 'summary', type: 'TEXT' },
+    { name: 'business_impact', type: 'TEXT' },
+    { name: 'technical_analysis', type: 'TEXT' },
+    { name: 'recommended_actions', type: 'TEXT' },
+    { name: 'severity_justification', type: 'TEXT' },
+    { name: 'generated_at', type: 'TEXT' },
+    { name: 'model_version', type: 'TEXT' },
+  ];
+
+  for (const col of requiredColumns) {
+    if (!existingColumns.includes(col.name)) {
+      db.exec(`ALTER TABLE ai_explanations ADD COLUMN ${col.name} ${col.type}`);
+    }
+  }
 }
 
 module.exports = {
