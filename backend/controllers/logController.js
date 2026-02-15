@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { parseAuthLog } = require('../services/logParser');
 const { bulkInsertLogs } = require('../db/queries');
+const { sanitizeLogContent } = require('../utils/sanitizer');
 
 function mapEventTypeToSeverity(eventType) {
   switch (eventType) {
@@ -62,6 +63,11 @@ async function uploadLogs(req, res, next) {
     // Bulk insert into SQLite
     const result = bulkInsertLogs(rows);
 
+    const safeSample = parsedEvents.slice(0, 5).map((event) => ({
+      ...event,
+      rawLog: sanitizeLogContent(event.rawLog),
+    }));
+
     return res.status(200).json({
       message: 'Log file uploaded, parsed, and stored successfully',
       file: {
@@ -75,7 +81,7 @@ async function uploadLogs(req, res, next) {
         parsedCount: parsedEvents.length,
         storedCount: result.changes || 0,
       },
-      sample: parsedEvents.slice(0, 5),
+      sample: safeSample,
     });
   } catch (err) {
     if (err instanceof Error && err.message.includes('File too large')) {

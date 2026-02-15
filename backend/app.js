@@ -1,12 +1,17 @@
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const logRoutes = require('./routes/logRoutes');
 const incidentRoutes = require('./routes/incidentRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
+const {
+  securityHeaders,
+  rateLimiter,
+  sanitizeInput,
+  apiKeyAuth,
+  csrfProtection,
+} = require('./middleware/securityMiddleware');
 
 const app = express();
 
@@ -14,7 +19,7 @@ const app = express();
 app.use(express.json());
 
 // Security headers
-app.use(helmet());
+app.use(securityHeaders());
 
 // CORS
 const corsOrigin = process.env.CORS_ORIGIN || '*';
@@ -25,18 +30,19 @@ app.use(
 );
 
 // Rate limiting
-const windowMinutes = parseInt(process.env.RATE_LIMIT_WINDOW_MINUTES || '15', 10);
-const maxRequests = parseInt(process.env.RATE_LIMIT_MAX || '100', 10);
+app.use(rateLimiter());
 
-const limiter = rateLimit({
-  windowMs: windowMinutes * 60 * 1000,
-  max: maxRequests,
-});
+// Input sanitization
+app.use(sanitizeInput);
 
-app.use(limiter);
-
-// Health routes
+// Health routes (no auth, used for readiness / liveness)
 app.use('/api/health', healthRoutes);
+
+// API key auth for the rest of the API surface
+app.use(apiKeyAuth);
+
+// CSRF protection for state-changing operations
+app.use(csrfProtection);
 
 // Log upload routes
 app.use('/api/logs', logRoutes);

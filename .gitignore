@@ -5,3 +5,10 @@ node_modules/
 dist/
 build/
 *.sqlite
+backend/db/*.sqlite-wal
+backend/db/*.sqlite-shm
+backend/db/*.sqlite-journal
+
+backend/logs/generated/*.log
+backend/logs/generated/*.json
+!backend/logs/generated/.gitkeep

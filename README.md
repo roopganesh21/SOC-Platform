@@ -17,3 +17,32 @@ This project is a Security Operations Center (SOC) platform focused on ingesting
 - tests/ – Automated tests for backend and frontend
 
 See docs/ for detailed plans and ongoing design decisions.
+
+## ✨ New Features
+
+- 🎲 **Log Generator**: Auto-create realistic attack scenarios for testing/demo
+
+## 🎲 Log Generation
+
+Generate realistic attack scenarios for testing:
+
+```bash
+# from soc-platform/
+cd backend
+
+# Interactive mode
+npm run generate-logs
+
+# Quick demo scenario
+npm run generate-demo
+
+# Specific attack type
+npm run generate-attack
+```
+
+## Available Scenarios
+- **Brute Force**: SSH credential attacks
+- **Admin Attack**: Web panel unauthorized access
+- **Privilege Escalation**: Sudo violations
+- **Port Scan**: Network reconnaissance
+- **Credential Stuffing**: Multi-IP attacks

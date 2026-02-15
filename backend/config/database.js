@@ -6,6 +6,13 @@ const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'db', 'soc.sqli
 // Initialize a shared database connection
 const db = new Database(dbPath);
 
+// Enable WAL mode for better concurrent read/write behaviour
+try {
+  db.pragma('journal_mode = WAL');
+} catch (e) {
+  // If WAL cannot be enabled (e.g., on read-only FS), continue with default mode.
+}
+
 function migrate() {
   // Logs table: raw security events
   db.exec(`
