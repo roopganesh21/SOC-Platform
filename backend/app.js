@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const logRoutes = require('./routes/logRoutes');
+const logGenerationRoutes = require('./routes/logGenerationRoutes');
 const incidentRoutes = require('./routes/incidentRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const healthRoutes = require('./routes/healthRoutes');
@@ -44,8 +45,17 @@ app.use(apiKeyAuth);
 // CSRF protection for state-changing operations
 app.use(csrfProtection);
 
-// Log upload routes
+// Log upload & generation routes
 app.use('/api/logs', logRoutes);
+
+// Alternate log generation namespace (Phase 9D)
+// Provides:
+//   POST /api/generate/logs
+//   POST /api/generate/logs/analyze
+//   GET  /api/generate/scenarios
+//   GET  /api/generate/generated
+//   DELETE /api/generate/generated/:filename
+app.use('/api/generate', logGenerationRoutes);
 
 // Incident routes
 app.use('/api/incidents', incidentRoutes);

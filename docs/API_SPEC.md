@@ -14,3 +14,39 @@ markdown
 
 ## Health
 - GET /api/health - API health check
+
+## Log Generation Endpoints
+
+### POST /api/logs/generate
+Generate logs programmatically
+
+**Request:**
+```json
+{
+	"scenarioType": "BRUTE_FORCE",
+	"count": 100,
+	"autoIngest": true
+}
+```
+
+**Response:**
+```json
+{
+	"success": true,
+	"filesGenerated": {
+		"auth": "logs/generated/auth-1234567890.log",
+		"access": "logs/generated/access-1234567890.log"
+	},
+	"metadata": {
+		"totalLogs": 150,
+		"attackType": "BRUTE_FORCE",
+		"incidentsDetected": 3
+	}
+}
+```
+
+### GET /api/logs/scenarios
+List available attack scenarios
+
+### POST /api/logs/generate-and-analyze
+Generate logs and auto-trigger detection

@@ -1,6 +1,7 @@
 const express = require('express');
 const { uploadLogFile } = require('../middleware/uploadMiddleware');
 const { uploadLogs } = require('../controllers/logController');
+const logGenerationRoutes = require('./logGenerationRoutes');
 
 const router = express.Router();
 
@@ -18,5 +19,8 @@ router.post('/upload', (req, res, next) => {
     return uploadLogs(req, res, next);
   });
 });
+
+// Log generation routes (Phase 9D)
+router.use('/', logGenerationRoutes);
 
 module.exports = router;

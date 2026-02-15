@@ -79,6 +79,26 @@ function getIncidentById(id) {
   return stmt.get(id);
 }
 
+const insertIncidentStmt = db.prepare(
+  'INSERT INTO incidents (title, description, status, severity, created_at, updated_at) VALUES (@title, @description, @status, @severity, @created_at, @updated_at)'
+);
+
+const bulkInsertIncidentsTransaction = db.transaction((rows) => {
+  for (const row of rows) {
+    insertIncidentStmt.run(row);
+  }
+});
+
+function insertIncident(row) {
+  return insertIncidentStmt.run(row);
+}
+
+function bulkInsertIncidents(rows) {
+  if (!rows || rows.length === 0) return { changes: 0 };
+  bulkInsertIncidentsTransaction(rows);
+  return { changes: rows.length };
+}
+
 function updateIncidentStatus(id, status) {
   const stmt = db.prepare(
     'UPDATE incidents SET status = ?, updated_at = ? WHERE id = ?'
@@ -218,6 +238,8 @@ module.exports = {
   // Incidents
   getIncidents,
   getIncidentById,
+  insertIncident,
+  bulkInsertIncidents,
   updateIncidentStatus,
   getIncidentStats,
   getIncidentTrendsDaily,
