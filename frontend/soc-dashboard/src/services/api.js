@@ -1,11 +1,13 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5100/api';
+const REQUEST_TIMEOUT_MS = parseInt(process.env.REACT_APP_API_TIMEOUT_MS || '8000', 10);
 const API_KEY = process.env.REACT_APP_API_KEY;
 const CSRF_TOKEN = process.env.REACT_APP_CSRF_TOKEN;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  timeout: Number.isFinite(REQUEST_TIMEOUT_MS) ? REQUEST_TIMEOUT_MS : 8000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -113,6 +115,70 @@ export async function getTopIps(limit = 5) {
   }
 }
 
+// Log Generation APIs (Phase 9D/9E)
+
+export async function getAvailableScenarios() {
+  try {
+    const response = await apiClient.get('/generate/scenarios');
+    return response.data;
+  } catch (error) {
+    console.error('getAvailableScenarios error:', error);
+    throw error;
+  }
+}
+
+export async function generateLogs(scenarioType, count, autoIngest = false) {
+  try {
+    const payload = {
+      scenarioType,
+      // Only send count if provided, to allow backend defaults
+      ...(typeof count === 'number' ? { count } : {}),
+      autoIngest,
+    };
+
+    const response = await apiClient.post('/generate/logs', payload);
+    return response.data;
+  } catch (error) {
+    console.error('generateLogs error:', error);
+    throw error;
+  }
+}
+
+export async function generateAndAnalyze(scenarioType, count) {
+  try {
+    const payload = {
+      scenarioType,
+      ...(typeof count === 'number' ? { count } : {}),
+    };
+
+    const response = await apiClient.post('/generate/logs/analyze', payload);
+    return response.data;
+  } catch (error) {
+    console.error('generateAndAnalyze error:', error);
+    throw error;
+  }
+}
+
+export async function getGeneratedFiles() {
+  try {
+    const response = await apiClient.get('/generate/generated');
+    return response.data;
+  } catch (error) {
+    console.error('getGeneratedFiles error:', error);
+    throw error;
+  }
+}
+
+export async function deleteGeneratedFile(filename) {
+  try {
+    const response = await apiClient.delete(`/generate/generated/${encodeURIComponent(filename)}`);
+    return response.data;
+  } catch (error) {
+    console.error('deleteGeneratedFile error:', error);
+    throw error;
+  }
+}
+
 export default {
   uploadLogs,
   getIncidents,
@@ -122,4 +188,9 @@ export default {
   getStats,
   getTrends,
   getTopIps,
+  getAvailableScenarios,
+  generateLogs,
+  generateAndAnalyze,
+  getGeneratedFiles,
+  deleteGeneratedFile,
 };

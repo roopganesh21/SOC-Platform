@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ExclamationTriangleIcon,
   FireIcon,
@@ -9,6 +9,7 @@ import StatCard from '../components/StatCard';
 import SeverityPieChart from '../components/charts/SeverityPieChart';
 import TrendLineChart from '../components/charts/TrendLineChart';
 import TopIPsBarChart from '../components/charts/TopIPsBarChart';
+import QuickGenerateWidget from '../components/QuickGenerateWidget';
 import api from '../services/api';
 
 export default function Dashboard() {
@@ -18,29 +19,31 @@ export default function Dashboard() {
   const [trendPoints, setTrendPoints] = useState([]);
   const [topIps, setTopIps] = useState([]);
 
+  const loadDashboardData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const [statsData, trendsData, topIpsData] = await Promise.all([
+      api.getStats(),
+      api.getTrends(30),
+      api.getTopIps(5),
+    ]);
+
+    setStats({
+      total: statsData.total || 0,
+      bySeverity: statsData.bySeverity || [],
+      byStatus: statsData.byStatus || [],
+    });
+
+    setTrendPoints(trendsData.points || []);
+    setTopIps(topIpsData.items || []);
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
     async function load() {
-      setLoading(true);
-      setError(null);
       try {
-        const [statsData, trendsData, topIpsData] = await Promise.all([
-          api.getStats(),
-          api.getTrends(30),
-          api.getTopIps(5),
-        ]);
-
-        if (!isMounted) return;
-
-        setStats({
-          total: statsData.total || 0,
-          bySeverity: statsData.bySeverity || [],
-          byStatus: statsData.byStatus || [],
-        });
-
-        setTrendPoints(trendsData.points || []);
-        setTopIps(topIpsData.items || []);
+        await loadDashboardData();
       } catch (err) {
         if (!isMounted) return;
         console.error('Failed to load stats:', err);
@@ -55,6 +58,14 @@ export default function Dashboard() {
       isMounted = false;
     };
   }, []);
+
+  const handleGenerate = useCallback(async () => {
+    try {
+      await loadDashboardData();
+    } catch (err) {
+      console.error('Failed to refresh dashboard after generation:', err);
+    }
+  }, [loadDashboardData]);
 
   const highSeverityCount = stats.bySeverity.find((s) => s.severity === 'HIGH')?.count || 0;
 
@@ -112,6 +123,8 @@ export default function Dashboard() {
           icon={CheckCircleIcon}
           color="from-emerald-500/20 via-emerald-500/10 to-slate-900"
         />
+
+        <QuickGenerateWidget onGenerate={handleGenerate} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

@@ -3,6 +3,7 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Sidebar from './components/layout/Sidebar';
+import LogGenerator from './pages/LogGenerator';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const IncidentsList = lazy(() => import('./pages/IncidentsList'));
@@ -30,6 +31,8 @@ function AppLayout() {
                 <Route path="/incidents" element={<IncidentsList />} />
                 <Route path="/incidents/:id" element={<IncidentDetail />} />
                 <Route path="/upload" element={<UploadLogs />} />
+                <Route path="/generator" element={<LogGenerator />} />
+                <Route path="/generate" element={<LogGenerator />} />
                 <Route path="/about" element={<About />} />
               </Routes>
             </Suspense>
