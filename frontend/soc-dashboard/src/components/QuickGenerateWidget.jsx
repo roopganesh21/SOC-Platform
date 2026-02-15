@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import api from '../services/api';
 
 export default function QuickGenerateWidget({ onGenerate }) {
@@ -7,33 +8,29 @@ export default function QuickGenerateWidget({ onGenerate }) {
   const [loadingScenarios, setLoadingScenarios] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+
+  const loadScenarios = useCallback(async () => {
+    setLoadingScenarios(true);
+    setLoadError(null);
+    try {
+      const data = await api.getAvailableScenarios();
+      const items = Array.isArray(data?.scenarios) ? data.scenarios : [];
+      setScenarios(items);
+      setSelected((prev) => prev || items[0]?.type || items[0]?.scenarioType || '');
+    } catch (err) {
+      console.error('QuickGenerateWidget: failed to load scenarios', err);
+      const msg = err?.response?.data?.error || 'Failed to load scenarios.';
+      setLoadError(msg);
+      setToast({ kind: 'error', message: msg });
+    } finally {
+      setLoadingScenarios(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadScenarios() {
-      setLoadingScenarios(true);
-      try {
-        const data = await api.getAvailableScenarios();
-        const items = Array.isArray(data?.scenarios) ? data.scenarios : [];
-        if (cancelled) return;
-        setScenarios(items);
-        setSelected((prev) => prev || items[0]?.type || items[0]?.scenarioType || '');
-      } catch (err) {
-        if (cancelled) return;
-        console.error('QuickGenerateWidget: failed to load scenarios', err);
-        const msg = err?.response?.data?.error || 'Failed to load scenarios.';
-        setToast({ kind: 'error', message: msg });
-      } finally {
-        if (!cancelled) setLoadingScenarios(false);
-      }
-    }
-
     loadScenarios();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [loadScenarios]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -81,7 +78,7 @@ export default function QuickGenerateWidget({ onGenerate }) {
   };
 
   return (
-    <div className="relative rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+    <div className="relative rounded-lg border border-slate-800 bg-slate-900/60 p-4 transition-all duration-300 hover:border-slate-700">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">Quick Attack Simulation</h3>
@@ -98,7 +95,8 @@ export default function QuickGenerateWidget({ onGenerate }) {
             value={selected}
             onChange={(e) => setSelected(e.target.value)}
             disabled={loadingScenarios || submitting}
-            className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 disabled:opacity-60"
+            title="Pick an attack scenario to simulate"
+            className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-100 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 disabled:opacity-60"
           >
             {loadingScenarios ? (
               <option value="">Loading…</option>
@@ -121,7 +119,8 @@ export default function QuickGenerateWidget({ onGenerate }) {
           type="button"
           onClick={handleGenerate}
           disabled={submitting || loadingScenarios || !selected}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-cyan-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-60"
+          title="Generate logs and run detection immediately"
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-cyan-500 px-3 py-2 text-xs font-semibold text-slate-950 transition-all duration-300 hover:bg-cyan-400 disabled:opacity-60"
         >
           {submitting ? (
             <>
@@ -139,6 +138,21 @@ export default function QuickGenerateWidget({ onGenerate }) {
             <span className="font-mono text-slate-200">
               {selectedMeta.defaultLogCount ?? 200}
             </span>
+          </div>
+        )}
+
+        {loadError && (
+          <div className="flex items-center justify-between gap-3 rounded-md border border-red-500/40 bg-red-900/30 px-3 py-2 text-[11px] text-red-100">
+            <span className="line-clamp-2">{loadError}</span>
+            <button
+              type="button"
+              onClick={loadScenarios}
+              className="inline-flex items-center gap-1 text-red-100/90 transition-all duration-300 hover:text-red-50"
+              title="Retry loading scenarios"
+            >
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+              Retry
+            </button>
           </div>
         )}
       </div>

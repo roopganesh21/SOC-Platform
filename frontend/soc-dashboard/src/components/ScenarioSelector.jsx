@@ -1,4 +1,12 @@
 import React from 'react';
+import {
+  Shield,
+  Lock,
+  AlertTriangle,
+  Search,
+  Bot,
+  Key,
+} from 'lucide-react';
 import SeverityBadge from './SeverityBadge';
 
 const severityToGradient = {
@@ -9,11 +17,13 @@ const severityToGradient = {
   default: 'from-slate-600/90 via-slate-700/90 to-slate-800/90',
 };
 
-const severityToIcon = {
-  critical: '🚨',
-  high: '🔥',
-  medium: '⚠️',
-  low: '👀',
+const scenarioIcons = {
+  BRUTE_FORCE: Shield,
+  ADMIN_ATTACK: Lock,
+  CREDENTIAL_STUFFING: Key,
+  MULTI_VECTOR: AlertTriangle,
+  NORMAL_WITH_ANOMALIES: Search,
+  DEFAULT: Bot,
 };
 
 function ScenarioSelector({ scenarios = [], onSelect, selected }) {
@@ -56,7 +66,7 @@ function ScenarioSelector({ scenarios = [], onSelect, selected }) {
           const isActive = selected === type;
 
           const gradient = severityToGradient[severityKey] || severityToGradient.default;
-          const icon = severityToIcon[severityKey] || '🛡️';
+          const Icon = scenarioIcons[type] || scenarioIcons.DEFAULT;
 
           return (
             <button
@@ -64,10 +74,10 @@ function ScenarioSelector({ scenarios = [], onSelect, selected }) {
               type="button"
               onClick={() => handleSelect(type)}
               className={[
-                'group relative flex h-full flex-col overflow-hidden rounded-xl border p-[1px] text-left transition-all duration-200',
+                'group relative flex h-full flex-col overflow-hidden rounded-xl border p-[1px] text-left transition-all duration-300',
                 isActive
                   ? 'border-cyan-400/80 shadow-lg shadow-cyan-500/30'
-                  : 'border-slate-700/80 hover:border-cyan-400/60 hover:shadow-lg hover:shadow-cyan-500/20',
+                  : 'border-slate-700/80 hover:-translate-y-0.5 hover:border-cyan-400/60 hover:shadow-lg hover:shadow-cyan-500/20',
               ].join(' ')}
             >
               <div className={`relative flex h-full flex-col rounded-[0.7rem] bg-gradient-to-br ${gradient}`}>
@@ -78,7 +88,7 @@ function ScenarioSelector({ scenarios = [], onSelect, selected }) {
                 <div className="relative flex flex-1 flex-col p-4">
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-950/40 text-xl shadow-inner shadow-black/40 ring-1 ring-slate-900/60">
-                      <span className="drop-shadow-sm">{icon}</span>
+                      <Icon className="h-5 w-5 text-slate-50 drop-shadow-sm" aria-hidden="true" />
                     </div>
 
                     <SeverityBadge severity={severityKey === 'default' ? 'low' : severityKey} />

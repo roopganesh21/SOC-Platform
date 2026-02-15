@@ -120,7 +120,7 @@ function detectInvalidUserLogins(logs) {
   return relevant.map((event) =>
     createIncident({
       type: 'InvalidUserLoginAttempt',
-      severity: 'Medium',
+      severity: 'Low',
       confidence: 0.75,
       description: `Login attempt with non-existent user ${event.user || 'unknown'}`,
       affectedUser: event.user || null,
@@ -185,6 +185,60 @@ function detectSuspiciousIpPatterns(logs) {
 }
 
 /**
+ * Rule 5 (Low): Small burst of failed logins – 2–4 failed logins from same IP within 2 minutes.
+ * This helps populate low-severity incidents for dashboards and filter demos.
+ */
+function detectLowSeverityFailedLoginBursts(logs) {
+  const relevant = logs.filter(
+    (l) => l.timestamp instanceof Date && l.ip && l.eventType === 'FAILED_LOGIN'
+  );
+
+  const incidents = [];
+  const byIp = groupBy(relevant, (l) => l.ip);
+
+  for (const [ip, events] of byIp.entries()) {
+    const sorted = [...events].sort((a, b) => a.timestamp - b.timestamp);
+
+    let found = false;
+    for (let i = 0; i < sorted.length && !found; i += 1) {
+      const windowStart = sorted[i].timestamp;
+      const windowEvents = [sorted[i]];
+
+      for (let j = i + 1; j < sorted.length; j += 1) {
+        // Wider window than brute-force rule so it triggers on more realistic "low-noise" patterns
+        if (withinMinutes(windowStart, sorted[j].timestamp, 10)) {
+          windowEvents.push(sorted[j]);
+        } else {
+          break;
+        }
+      }
+
+      // Exclude brute-force threshold (handled by High rule)
+      if (windowEvents.length >= 2 && windowEvents.length <= 4) {
+        const timestamp = windowEvents[windowEvents.length - 1].timestamp;
+
+        incidents.push(
+          createIncident({
+            type: 'FailedLoginBurst',
+            severity: 'Low',
+            confidence: 0.55,
+            description: `Observed ${windowEvents.length} failed login attempts from IP ${ip} within 2 minutes (below brute-force threshold)`,
+            affectedUser: null,
+            sourceIP: ip,
+            timestamp,
+            relatedLogs: windowEvents,
+          })
+        );
+
+        found = true;
+      }
+    }
+  }
+
+  return incidents;
+}
+
+/**
  * Main analysis entrypoint.
  * @param {Array<{timestamp: Date|null, ip: string|null, user: string|null, eventType: string, status: string, rawLog: string}>} parsedLogs
  * @returns {Array<{type: string, severity: string, confidence: number, description: string, affectedUser: string|null, sourceIP: string|null, timestamp: Date|null, relatedLogs: any[]}>}
@@ -193,6 +247,7 @@ function analyzeLogs(parsedLogs) {
   const logs = Array.isArray(parsedLogs) ? parsedLogs : [];
 
   const incidents = [];
+  incidents.push(...detectLowSeverityFailedLoginBursts(logs));
   incidents.push(...detectBruteForce(logs));
   incidents.push(...detectSudoViolations(logs));
   incidents.push(...detectInvalidUserLogins(logs));

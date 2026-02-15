@@ -1,5 +1,16 @@
 const { db } = require('../config/database');
 
+function getTableColumns(tableName) {
+  try {
+    return db
+      .prepare(`PRAGMA table_info(${tableName})`)
+      .all()
+      .map((c) => c.name);
+  } catch (err) {
+    return [];
+  }
+}
+
 // Logs -----------------------------------------------------------------------
 
 const insertLogStmt = db.prepare(
@@ -49,12 +60,14 @@ function getIncidents({ page, pageSize, status, severity }) {
   const params = [];
 
   if (status) {
-    baseQuery += ' AND status = ?';
+    // Allow case-insensitive filtering (UI uses uppercase, DB may store title-case)
+    baseQuery += ' AND status = ? COLLATE NOCASE';
     params.push(status);
   }
 
   if (severity) {
-    baseQuery += ' AND severity = ?';
+    // Allow case-insensitive filtering (UI uses uppercase, DB may store title-case)
+    baseQuery += ' AND severity = ? COLLATE NOCASE';
     params.push(severity);
   }
 
@@ -189,19 +202,116 @@ function getSeverityDistribution() {
 
 // AI Explanations ------------------------------------------------------------
 
-const insertAiExplanationStmt = db.prepare(
-  'INSERT INTO ai_explanations (incident_id, summary, business_impact, technical_analysis, recommended_actions, severity_justification, generated_at, model_version) VALUES (@incident_id, @summary, @business_impact, @technical_analysis, @recommended_actions, @severity_justification, @generated_at, @model_version)'
-);
+let aiExplanationInsertStmt = null;
+let aiExplanationGetStmt = null;
+let aiExplanationColumns = null;
+
+function initAiExplanationStatements() {
+  if (aiExplanationColumns && aiExplanationInsertStmt && aiExplanationGetStmt) {
+    return;
+  }
+
+  aiExplanationColumns = getTableColumns('ai_explanations');
+  const has = (name) => aiExplanationColumns.includes(name);
+
+  const insertCols = ['incident_id'];
+  const placeholders = ['@incident_id'];
+
+  // Legacy schema (older DBs): explanation (NOT NULL), created_at (NOT NULL), model
+  if (has('explanation')) {
+    insertCols.push('explanation');
+    placeholders.push('@explanation');
+  }
+  if (has('created_at')) {
+    insertCols.push('created_at');
+    placeholders.push('@created_at');
+  }
+  if (has('model')) {
+    insertCols.push('model');
+    placeholders.push('@model');
+  }
+
+  // Newer schema (structured columns)
+  const optionalCols = [
+    'summary',
+    'business_impact',
+    'technical_analysis',
+    'recommended_actions',
+    'severity_justification',
+    'generated_at',
+    'model_version',
+  ];
+  for (const col of optionalCols) {
+    if (has(col)) {
+      insertCols.push(col);
+      placeholders.push(`@${col}`);
+    }
+  }
+
+  aiExplanationInsertStmt = db.prepare(
+    `INSERT INTO ai_explanations (${insertCols.join(', ')}) VALUES (${placeholders.join(', ')})`
+  );
+
+  const orderCol = has('generated_at')
+    ? 'generated_at'
+    : has('created_at')
+      ? 'created_at'
+      : 'id';
+
+  aiExplanationGetStmt = db.prepare(
+    `SELECT * FROM ai_explanations WHERE incident_id = ? ORDER BY ${orderCol} DESC LIMIT 1`
+  );
+}
 
 function insertAiExplanation(row) {
-  return insertAiExplanationStmt.run(row);
+  initAiExplanationStatements();
+
+  const has = (name) => aiExplanationColumns.includes(name);
+  const nowIso = new Date().toISOString();
+
+  const safeRow = { ...row };
+
+  if (has('created_at') && !safeRow.created_at) {
+    safeRow.created_at = safeRow.generated_at || nowIso;
+  }
+
+  if (has('model') && !safeRow.model) {
+    // Keep legacy column populated for older schemas.
+    safeRow.model = safeRow.model_version || 'gemini';
+  }
+
+  if (has('explanation') && !safeRow.explanation) {
+    // Legacy schema expects a single NOT NULL `explanation` field.
+    // Store the structured payload as JSON for backwards compatibility.
+    safeRow.explanation = JSON.stringify(
+      {
+        summary: safeRow.summary || '',
+        businessImpact: safeRow.business_impact || '',
+        technicalAnalysis: safeRow.technical_analysis || '',
+        recommendedActions: safeRow.recommended_actions
+          ? (() => {
+              try {
+                const parsed = JSON.parse(safeRow.recommended_actions);
+                return Array.isArray(parsed) ? parsed : [];
+              } catch (e) {
+                return [];
+              }
+            })()
+          : [],
+        severityJustification: safeRow.severity_justification || '',
+      },
+      null,
+      0
+    );
+  }
+
+  return aiExplanationInsertStmt.run(safeRow);
 }
 
 function getExplanationByIncidentId(incidentId) {
-  const stmt = db.prepare(
-    'SELECT * FROM ai_explanations WHERE incident_id = ? ORDER BY generated_at DESC LIMIT 1'
-  );
-  const row = stmt.get(incidentId);
+  initAiExplanationStatements();
+
+  const row = aiExplanationGetStmt.get(incidentId);
   if (!row) return null;
 
   let recommendedActions = [];
@@ -217,14 +327,36 @@ function getExplanationByIncidentId(incidentId) {
     }
   }
 
+  // If we are on a legacy schema that stores everything in `explanation`, try to parse it.
+  if (!row.summary && row.explanation) {
+    try {
+      const parsed = JSON.parse(row.explanation);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          summary: parsed.summary || '',
+          businessImpact: parsed.businessImpact || '',
+          technicalAnalysis: parsed.technicalAnalysis || '',
+          recommendedActions: Array.isArray(parsed.recommendedActions)
+            ? parsed.recommendedActions
+            : recommendedActions,
+          severityJustification: parsed.severityJustification || '',
+          generatedAt: row.generated_at || row.created_at || null,
+          modelVersion: row.model_version || row.model || null,
+        };
+      }
+    } catch (err) {
+      // ignore
+    }
+  }
+
   return {
     summary: row.summary || '',
     businessImpact: row.business_impact || '',
     technicalAnalysis: row.technical_analysis || '',
     recommendedActions,
     severityJustification: row.severity_justification || '',
-    generatedAt: row.generated_at || null,
-    modelVersion: row.model_version || null,
+    generatedAt: row.generated_at || row.created_at || null,
+    modelVersion: row.model_version || row.model || null,
   };
 }
 

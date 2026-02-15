@@ -35,7 +35,17 @@ function TopIPsBarChart({ data }) {
           stroke="#64748b"
           tick={{ fontSize: 11 }}
         />
-        <Tooltip formatter={(value) => [`${value} events`, 'Count']}
+        <Tooltip
+          formatter={(value) => [`${value} events`, 'Count']}
+          contentStyle={{
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            border: '1px solid rgba(51, 65, 85, 0.9)',
+            borderRadius: 8,
+            color: 'rgba(226, 232, 240, 1)',
+            fontSize: 12,
+          }}
+          labelStyle={{ color: 'rgba(148, 163, 184, 1)' }}
+          itemStyle={{ color: 'rgba(226, 232, 240, 1)' }}
         />
         <defs>
           <linearGradient id="ipBarGradient" x1="0" y1="0" x2="1" y2="0">

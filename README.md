@@ -20,29 +20,51 @@ See docs/ for detailed plans and ongoing design decisions.
 
 ## ✨ New Features
 
-- 🎲 **Log Generator**: Auto-create realistic attack scenarios for testing/demo
+- 🎲 **Attack Scenario Generator**: Create realistic attack logs for demos and detection testing
 
-## 🎲 Log Generation
+## 🎲 Attack Scenario Generator
 
-Generate realistic attack scenarios for testing:
+Our platform includes a log generator for creating realistic attack scenarios and optionally running detection immediately.
+
+### Features
+- 🎯 **Pre-built Attack Scenarios**: curated scenarios like brute force and admin panel attacks
+- 🔄 **Auto-Detection**: generate logs and immediately detect threats (auto-ingest)
+- 📊 **Realistic Data**: produces auth.log + access.log style output with metadata
+- 🎨 **Easy UI**: one-click scenario generation in the dashboard
+
+### Quick Start
+
+**CLI:**
 
 ```bash
 # from soc-platform/
 cd backend
-
-# Interactive mode
 npm run generate-logs
-
-# Quick demo scenario
-npm run generate-demo
-
-# Specific attack type
-npm run generate-attack
 ```
 
-## Available Scenarios
-- **Brute Force**: SSH credential attacks
-- **Admin Attack**: Web panel unauthorized access
-- **Privilege Escalation**: Sudo violations
-- **Port Scan**: Network reconnaissance
-- **Credential Stuffing**: Multi-IP attacks
+**API:**
+
+> Note: the backend port is configurable via `PORT` in `backend/.env`.
+
+```bash
+curl -X POST http://localhost:5100/api/generate/logs \
+	-H "Content-Type: application/json" \
+	-d '{"scenarioType":"BRUTE_FORCE","count":100,"autoIngest":true}'
+```
+
+**Frontend:**
+
+Navigate to `/generator` in the dashboard.
+
+### Available Scenarios
+- **BRUTE_FORCE**: repeated failed SSH logins from a single IP (credential guessing)
+- **ADMIN_ATTACK**: high-volume unauthorized requests targeting `/admin` paths
+- **CREDENTIAL_STUFFING**: same username targeted from many IPs (spraying/stuffing)
+- **MULTI_VECTOR**: combined behaviors across multiple log types (demo scenario)
+- **NORMAL_WITH_ANOMALIES**: mostly normal traffic with a few injected anomalies (baseline testing)
+
+### Demo Use Cases
+- Training SOC analysts on triage workflows
+- Testing and tuning detection rules
+- Demonstrating platform capabilities end-to-end
+- Benchmarking performance and rate limiting

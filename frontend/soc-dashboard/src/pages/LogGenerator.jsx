@@ -1,9 +1,11 @@
 import React, {
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Info, RefreshCw } from 'lucide-react';
 import api from '../services/api';
 import ScenarioSelector from '../components/ScenarioSelector';
 
@@ -26,6 +28,19 @@ function formatDate(iso) {
   return d.toLocaleString();
 }
 
+function ScenarioSkeletonGrid() {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, idx) => (
+        <div
+          key={idx}
+          className="h-[170px] animate-pulse rounded-xl border border-slate-800 bg-slate-900/60"
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function LogGenerator() {
   const navigate = useNavigate();
 
@@ -34,40 +49,33 @@ export default function LogGenerator() {
   const [logCount, setLogCount] = useState(200);
   const [autoIngest, setAutoIngest] = useState(true);
   const [isLoadingScenarios, setIsLoadingScenarios] = useState(false);
+  const [scenarioLoadError, setScenarioLoadError] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationResult, setGenerationResult] = useState(null);
   const [generatedFiles, setGeneratedFiles] = useState([]);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchScenarios = async () => {
-      setIsLoadingScenarios(true);
-      setError(null);
-      try {
-        const data = await api.getAvailableScenarios();
-        const items = Array.isArray(data?.scenarios) ? data.scenarios : [];
-        if (!cancelled) {
-          setScenarios(items);
-          setSelectedScenario((prev) => prev || (items[0]?.type || items[0]?.scenarioType || null));
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error('Failed to load scenarios', err);
-          const msg = err?.response?.data?.error || 'Failed to load scenarios.';
-          setError(msg);
-        }
-      } finally {
-        if (!cancelled) setIsLoadingScenarios(false);
-      }
-    };
-
-    fetchScenarios();
-    return () => {
-      cancelled = true;
-    };
+  const loadScenarios = useCallback(async () => {
+    setIsLoadingScenarios(true);
+    setScenarioLoadError(null);
+    try {
+      const data = await api.getAvailableScenarios();
+      const items = Array.isArray(data?.scenarios) ? data.scenarios : [];
+      setScenarios(items);
+      setSelectedScenario((prev) => prev || (items[0]?.type || items[0]?.scenarioType || null));
+    } catch (err) {
+      console.error('Failed to load scenarios', err);
+      const msg = err?.response?.data?.error || 'Failed to load scenarios.';
+      setScenarioLoadError(msg);
+    } finally {
+      setIsLoadingScenarios(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadScenarios();
+  }, [loadScenarios]);
 
   // Fetch generated files on mount and after every successful generation
   const refreshGeneratedFiles = async () => {
@@ -171,10 +179,26 @@ export default function LogGenerator() {
       </header>
 
       {/* Scenario selection */}
-      <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+      <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4 transition-all duration-300">
         {isLoadingScenarios ? (
-          <div className="flex items-center justify-center py-10 text-sm text-slate-400">
-            Loading scenarios…
+          <ScenarioSkeletonGrid />
+        ) : scenarioLoadError ? (
+          <div className="space-y-3 rounded-lg border border-red-500/40 bg-red-900/30 p-4 text-sm text-red-100">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-semibold">Failed to load scenarios</div>
+                <div className="mt-1 text-xs text-red-100/90">{scenarioLoadError}</div>
+              </div>
+              <button
+                type="button"
+                onClick={loadScenarios}
+                className="inline-flex items-center gap-2 rounded-md bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-50 transition-all duration-300 hover:bg-red-500/30"
+                title="Retry loading scenarios"
+              >
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                Retry
+              </button>
+            </div>
           </div>
         ) : (
           <ScenarioSelector
@@ -201,7 +225,7 @@ export default function LogGenerator() {
       </section>
 
       {/* Configuration */}
-      <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+      <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4 transition-all duration-300">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-slate-200">Generation Settings</h2>
@@ -224,6 +248,7 @@ export default function LogGenerator() {
               max={1000}
               value={logCount}
               onChange={(e) => setLogCount(Number(e.target.value) || 10)}
+              title="Controls the approximate total number of generated log lines"
               className="w-full accent-cyan-400"
             />
             <div className="flex justify-between text-[11px] text-slate-500">
@@ -234,11 +259,20 @@ export default function LogGenerator() {
 
           <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-200">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-slate-100">Auto-ingest into platform</span>
+              <span className="inline-flex items-center gap-2 font-medium text-slate-100">
+                Auto-ingest into platform
+                <span
+                  className="inline-flex items-center"
+                  title="When enabled, generated auth logs are ingested and detection rules run automatically"
+                >
+                  <Info className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+                </span>
+              </span>
               <button
                 type="button"
                 onClick={() => setAutoIngest((v) => !v)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                title="Toggle whether generated logs are automatically ingested and analyzed"
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ${
                   autoIngest ? 'bg-emerald-500/80' : 'bg-slate-700'
                 }`}
               >
@@ -266,7 +300,7 @@ export default function LogGenerator() {
             type="button"
             onClick={handleGenerate}
             disabled={isGenerating || !selectedScenario}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/30 hover:bg-cyan-400 disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/30 transition-all duration-300 hover:bg-cyan-400 disabled:opacity-60"
           >
             {isGenerating ? (
               <>
@@ -284,10 +318,13 @@ export default function LogGenerator() {
 
       {/* Results */}
       {generationResult && (
-        <section className="space-y-4 rounded-xl border border-emerald-500/40 bg-emerald-900/10 p-4">
+        <section className="space-y-4 rounded-xl border border-emerald-500/40 bg-emerald-900/10 p-4 transition-all duration-300">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-emerald-200">Generation Complete</h2>
+              <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-200">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" aria-hidden="true" />
+                Generation Complete
+              </h2>
               {success && <p className="mt-1 text-xs text-emerald-100/90">{success}</p>}
             </div>
           </div>
@@ -342,7 +379,7 @@ export default function LogGenerator() {
                   <button
                     type="button"
                     onClick={handleViewIncidents}
-                    className="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-slate-950 hover:bg-emerald-400"
+                    className="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-slate-950 transition-all duration-300 hover:bg-emerald-400"
                   >
                     View Incidents
                   </button>
@@ -351,7 +388,7 @@ export default function LogGenerator() {
                   <button
                     type="button"
                     onClick={handleUploadToPlatform}
-                    className="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-slate-950 hover:bg-emerald-400"
+                    className="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-slate-950 transition-all duration-300 hover:bg-emerald-400"
                   >
                     Upload to Platform
                   </button>
@@ -377,13 +414,14 @@ export default function LogGenerator() {
       )}
 
       {/* History */}
-      <section className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+      <section className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 transition-all duration-300">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-slate-200">Recently Generated Files</h2>
           <button
             type="button"
             onClick={refreshGeneratedFiles}
-            className="text-[11px] font-medium text-cyan-300 hover:text-cyan-200"
+            title="Refresh generated files list"
+            className="text-[11px] font-medium text-cyan-300 transition-all duration-300 hover:text-cyan-200"
           >
             Refresh
           </button>
@@ -415,7 +453,8 @@ export default function LogGenerator() {
                       <button
                         type="button"
                         onClick={() => handleDeleteFile(file.name)}
-                        className="text-[11px] font-medium text-red-300 hover:text-red-200"
+                        title="Delete this generated file"
+                        className="text-[11px] font-medium text-red-300 transition-all duration-300 hover:text-red-200"
                       >
                         Delete
                       </button>

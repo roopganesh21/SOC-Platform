@@ -179,7 +179,7 @@ export async function deleteGeneratedFile(filename) {
   }
 }
 
-export default {
+const api = {
   uploadLogs,
   getIncidents,
   getIncidentById,
@@ -194,3 +194,5 @@ export default {
   getGeneratedFiles,
   deleteGeneratedFile,
 };
+
+export default api;

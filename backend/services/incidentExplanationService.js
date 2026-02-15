@@ -75,8 +75,20 @@ async function getOrCreateIncidentExplanation(incident, relatedLogs = []) {
   }
 
   const nowIso = new Date().toISOString();
+  const legacyExplanationPayload = {
+    summary: aiResult.summary,
+    businessImpact: aiResult.businessImpact,
+    technicalAnalysis: aiResult.technicalAnalysis,
+    recommendedActions: aiResult.recommendedActions || [],
+    severityJustification: aiResult.severityJustification,
+  };
+
   const dbRow = {
     incident_id: incident.id,
+    // Legacy schema compatibility (some DBs require these NOT NULL columns)
+    explanation: JSON.stringify(legacyExplanationPayload),
+    created_at: nowIso,
+    model: 'gemini-2.5-flash',
     summary: aiResult.summary,
     business_impact: aiResult.businessImpact,
     technical_analysis: aiResult.technicalAnalysis,

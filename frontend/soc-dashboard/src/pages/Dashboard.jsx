@@ -57,7 +57,7 @@ export default function Dashboard() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadDashboardData]);
 
   const handleGenerate = useCallback(async () => {
     try {
@@ -67,7 +67,10 @@ export default function Dashboard() {
     }
   }, [loadDashboardData]);
 
-  const highSeverityCount = stats.bySeverity.find((s) => s.severity === 'HIGH')?.count || 0;
+  const highSeverityCount =
+    stats.bySeverity
+      .filter((s) => ['HIGH', 'CRITICAL'].includes(String(s.severity || '').toUpperCase()))
+      .reduce((sum, s) => sum + (s.count || 0), 0) || 0;
 
   const openCount = stats.byStatus.find((s) => s.status === 'OPEN')?.count || 0;
   const acknowledgedCount =
