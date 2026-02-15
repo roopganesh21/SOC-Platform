@@ -68,3 +68,14 @@ Navigate to `/generator` in the dashboard.
 - Testing and tuning detection rules
 - Demonstrating platform capabilities end-to-end
 - Benchmarking performance and rate limiting
+
+## 🔐 Environment Variables (No Secrets in Git)
+
+This repo does **not** commit real API keys. Local configuration is done via `.env` files that are ignored by git.
+
+- Backend:
+	- Copy `backend/.env.example` → `backend/.env`
+	- Set `GEMINI_API_KEY=INSERT_YOUR_KEY_HERE` to your real key (optional; only needed for AI explanations)
+- Frontend:
+	- Copy `frontend/soc-dashboard/.env.example` → `frontend/soc-dashboard/.env`
+	- Adjust `REACT_APP_API_BASE_URL` if your backend port differs
